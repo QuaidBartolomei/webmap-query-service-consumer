@@ -2,13 +2,10 @@
 /*
  * seed data to DB for testing
  */
+const pool = require('pg');
 const uuid = require('uuid');
 const log = require('loglevel');
-const knex = require('knex')({
-  client: 'pg',
-  //  debug: true,
-  connection: require('../config/config').connectionString,
-});
+const knex = require('knex');
 
 // Example of a database seed using knex
 // This follows from the wallet microservice
