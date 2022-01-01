@@ -1,6 +1,7 @@
 module.exports = {
   extends: [
     'airbnb-base',
+    'airbnb-typescript/base',
     'plugin:import/recommended',
     'plugin:import/typescript',
     'plugin:@typescript-eslint/recommended',
@@ -31,6 +32,13 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': ['error'],
     'no-shadow': 'off',
     '@typescript-eslint/no-shadow': ['error'],
+    '@typescript-eslint/naming-convention': [
+      'error',
+      {
+        selector: 'variable',
+        format: ['camelCase', 'UPPER_CASE', 'snake_case'],
+      },
+    ],
   },
   env: {
     es2021: true,
