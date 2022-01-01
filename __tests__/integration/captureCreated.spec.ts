@@ -1,10 +1,10 @@
+import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
 import { getBroker, publish } from 'messaging/broker'
 import { SubscriptionNames } from 'messaging/brokerConfig'
 import registerEventHandlers from 'messaging/eventHandlers'
 import { truncateTables } from 'models/base'
 import { CaptureFeature } from 'models/captureFeature'
-import waitForExpect from 'wait-for-expect'
 
 const data: CaptureFeature = {
   id: '63e00bca-8eb0-11eb-8dcd-0242ac130003',

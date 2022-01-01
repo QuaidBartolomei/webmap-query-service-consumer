@@ -11,12 +11,7 @@ module.exports = {
     'import/no-extraneous-dependencies': [
       'error',
       {
-        devDependencies: [
-          '**/*.test.ts',
-          '**/*.spec.ts',
-          'test/**/*',
-          '**/*.dev.ts',
-        ],
+        devDependencies: ['**/*.{test,spec}.ts', 'test/**/*'],
       },
     ],
     'no-console': 'off',
@@ -30,6 +25,25 @@ module.exports = {
       {
         selector: 'variable',
         format: ['camelCase', 'UPPER_CASE', 'snake_case'],
+      },
+    ],
+    'import/order': [
+      'error',
+      {
+        groups: [
+          'builtin', // node built in
+          'external', // installed dependencies
+          'internal', // baseUrl
+          'index', // ./
+          'sibling', // ./*
+          'parent', // ../*
+          'object', // ts only
+          'type', // ts only
+        ],
+        alphabetize: {
+          order: 'asc',
+          caseInsensitive: true,
+        },
       },
     ],
   },
