@@ -8,8 +8,6 @@ module.exports = {
     'prettier',
   ],
   rules: {
-    'import/extensions': ['error', 'never'],
-    '@typescript-eslint/require-await': 'error',
     'import/no-extraneous-dependencies': [
       'error',
       {
@@ -26,12 +24,7 @@ module.exports = {
     'no-underscore-dangle': ['error', { allow: ['_id'] }],
     'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
     'no-promise-executor-return': 'off',
-    'consistent-return': 'off',
     camelcase: 'off',
-    'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error'],
-    'no-shadow': 'off',
-    '@typescript-eslint/no-shadow': ['error'],
     '@typescript-eslint/naming-convention': [
       'error',
       {
