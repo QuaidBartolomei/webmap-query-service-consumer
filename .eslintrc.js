@@ -1,10 +1,10 @@
 module.exports = {
   extends: [
-    'airbnb-base',
-    'airbnb-typescript/base',
     'plugin:import/recommended',
     'plugin:import/typescript',
     'plugin:@typescript-eslint/recommended',
+    'airbnb-base',
+    'airbnb-typescript/base',
     'prettier',
   ],
   rules: {
@@ -16,7 +16,6 @@ module.exports = {
     ],
     'no-console': 'off',
     'import/prefer-default-export': 'off',
-    'no-underscore-dangle': ['error', { allow: ['_id'] }],
     'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
     'no-promise-executor-return': 'off',
     camelcase: 'off',
@@ -62,7 +61,7 @@ module.exports = {
     'import/resolver': {
       node: {
         extensions: ['.ts'],
-        moduleDirectory: ['node_modules', 'server/'],
+        moduleDirectory: ['server/'],
       },
     },
   },
