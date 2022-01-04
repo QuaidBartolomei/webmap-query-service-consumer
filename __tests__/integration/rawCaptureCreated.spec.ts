@@ -1,10 +1,9 @@
 import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
 import { getBroker, publish } from 'messaging/broker'
-import { SubscriptionNames } from 'messaging/brokerConfig'
+import { PublicationNames, RoutingKeys } from 'messaging/brokerConfig'
 import registerEventHandlers from 'messaging/eventHandlers'
 import { truncateTables } from 'models/base'
-
 import capture_in_kenya from '../mock/capture_in_kenya.json'
 
 // check the region data, make sure the sample data has been imported from mock/xxx.copy
@@ -78,8 +77,11 @@ describe('rawCaptureFeature', () => {
 
     // prepare the capture before the wallet event
     const message = capture_in_kenya
-    await publish(SubscriptionNames.FIELD_DATA, '', message, () =>
-      console.log('message received'),
+    await publish(
+      PublicationNames.WEBMAP_EVENTS,
+      RoutingKeys.RAW_CAPTURE_CREATED,
+      message,
+      () => console.log('message received'),
     )
 
     await waitForExpect(async () => {

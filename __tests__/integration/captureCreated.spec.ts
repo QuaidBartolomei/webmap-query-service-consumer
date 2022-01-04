@@ -2,7 +2,7 @@ import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
 import { getBroker, publish } from 'messaging/broker'
 import {
-  EventNames,
+  RoutingKeys,
   PublicationNames,
   SubscriptionNames,
 } from 'messaging/brokerConfig'
@@ -46,7 +46,7 @@ describe('capture created', () => {
     // publish the capture
     await publish(
       PublicationNames.WEBMAP_EVENTS,
-      EventNames.CAPTURE_DATA,
+      RoutingKeys.CAPTURE_DATA,
       data,
       (e) => console.log('result:', e),
     )

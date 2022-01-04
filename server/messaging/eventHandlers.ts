@@ -55,6 +55,9 @@ const tokenAssignedHandler: BrokerEventHandler<TokenMessage> = async (
 
 export default async function registerEventHandlers() {
   await subscribe(SubscriptionNames.CAPTURE_DATA, captureFeatureCreatedHandler)
-  await subscribe(SubscriptionNames.FIELD_DATA, rawCaptureCreatedHandler)
+  await subscribe(
+    SubscriptionNames.RAW_CAPTURE_CREATED,
+    rawCaptureCreatedHandler,
+  )
   await subscribe(SubscriptionNames.TOKEN_ASSIGNED, tokenAssignedHandler)
 }

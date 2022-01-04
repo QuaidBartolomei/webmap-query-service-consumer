@@ -1,24 +1,32 @@
 import { BrokerConfig } from 'rascal'
 
-const consumer = 'webmap'
-
 export enum PublicationNames {
   WEBMAP_EVENTS = 'webmap_events',
 }
 
 export enum SubscriptionNames {
   CAPTURE_DATA = 'capture-data',
-  FIELD_DATA = 'raw-capture-created',
+  RAW_CAPTURE_CREATED = 'raw-capture-created',
   TOKEN_ASSIGNED = 'token-assigned',
 }
 
-export enum EventNames {
+export enum RoutingKeys {
   CAPTURE_DATA = `webmap.capture-data.created`,
   TOKEN_ASSIGNED = `webmap.token.assign`,
+  RAW_CAPTURE_CREATED = 'webmap.raw-capture.created',
 }
 
-const captureDataSave = `${consumer}:${SubscriptionNames.CAPTURE_DATA}:save`
-const tokenSave = `${consumer}:${SubscriptionNames.TOKEN_ASSIGNED}:save`
+export enum QueueNames {
+  CAPTURE_DATA = `webmap:capture-data:save`,
+  TOKEN_ASSIGNED = `webmap:token:assign`,
+  RAW_CAPTURE_CREATED = 'webmap:raw-capture:save',
+}
+
+export const cap = {
+  routingKey: `webmap.capture-data.created`,
+  queueName: `webmap.capture-data.created`,
+  subcriptionName: `webmap.capture-data.created`,
+}
 
 const brokerConfig: BrokerConfig = {
   vhosts: {
@@ -38,7 +46,7 @@ const brokerConfig: BrokerConfig = {
 
       // A good naming convention for queues is consumer:entity:action
       queues: {
-        [`${captureDataSave}`]: {
+        [QueueNames.CAPTURE_DATA]: {
           options: {
             arguments: {
               // Route nacked messages to a service specific dead letter queue
@@ -48,7 +56,17 @@ const brokerConfig: BrokerConfig = {
           },
         },
 
-        [`${tokenSave}`]: {
+        [QueueNames.TOKEN_ASSIGNED]: {
+          options: {
+            arguments: {
+              // Route nacked messages to a service specific dead letter queue
+              'x-dead-letter-exchange': 'dead_letters',
+              'x-dead-letter-routing-key': 'webmap.dead_letter',
+            },
+          },
+        },
+
+        [QueueNames.RAW_CAPTURE_CREATED]: {
           options: {
             arguments: {
               // Route nacked messages to a service specific dead letter queue
@@ -74,14 +92,19 @@ const brokerConfig: BrokerConfig = {
       },
 
       bindings: {
-        [`service[${EventNames.CAPTURE_DATA}] -> ${captureDataSave}`]: {},
-        [`service[${EventNames.TOKEN_ASSIGNED}] -> ${tokenSave}`]: {},
+        [`service[${RoutingKeys.CAPTURE_DATA}] -> ${QueueNames.CAPTURE_DATA}`]:
+          {},
+        [`service[${RoutingKeys.TOKEN_ASSIGNED}] -> ${QueueNames.TOKEN_ASSIGNED}`]:
+          {},
+        [`service[${RoutingKeys.RAW_CAPTURE_CREATED}] -> ${QueueNames.RAW_CAPTURE_CREATED}`]:
+          {},
 
         // Route delayed messages to the 1 minute delay queue
         'delay[delay.1m] -> delay:1m': {},
 
         // Route retried messages back to their original queue using the CC routing keys set by Rascal
-        'retry[webmap:capture-data:save] -> webmap:capture-data:save': {},
+        [`retry[${RoutingKeys.CAPTURE_DATA}] -> ${QueueNames.CAPTURE_DATA}`]:
+          {},
         // Route dead letters the service specific dead letter queue
         'dead_letters[webmap.dead_letter] -> dead_letters:webmap': {},
       },
@@ -107,7 +130,7 @@ const brokerConfig: BrokerConfig = {
 
       subscriptions: {
         [SubscriptionNames.CAPTURE_DATA]: {
-          queue: captureDataSave,
+          queue: QueueNames.CAPTURE_DATA,
           contentType: 'application/json',
           redeliveries: {
             limit: 5,
@@ -116,7 +139,16 @@ const brokerConfig: BrokerConfig = {
         },
 
         [SubscriptionNames.TOKEN_ASSIGNED]: {
-          queue: tokenSave,
+          queue: QueueNames.TOKEN_ASSIGNED,
+          contentType: 'application/json',
+          redeliveries: {
+            limit: 5,
+            counter: 'shared',
+          },
+        },
+
+        [SubscriptionNames.RAW_CAPTURE_CREATED]: {
+          queue: QueueNames.RAW_CAPTURE_CREATED,
           contentType: 'application/json',
           redeliveries: {
             limit: 5,
