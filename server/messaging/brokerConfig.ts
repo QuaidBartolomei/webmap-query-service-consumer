@@ -1,10 +1,23 @@
 import { BrokerConfig } from 'rascal'
 
+const consumer = 'webmap'
+
+export enum PublicationNames {
+  WEBMAP_EVENTS = 'webmap_events',
+}
+
 export enum SubscriptionNames {
-  CAPTURE_DATA = 'capture-created',
+  CAPTURE_DATA = 'capture-data',
   FIELD_DATA = 'raw-capture-created',
   TOKEN_ASSIGNED = 'token-assigned',
 }
+
+export enum EventNames {
+  CAPTURE_DATA = `webmap.capture-data.created`,
+}
+
+const captureDataSave = `${consumer}:${SubscriptionNames.CAPTURE_DATA}:save`
+const captureDataToken = `${consumer}.${SubscriptionNames.CAPTURE_DATA}.created`
 
 const brokerConfig: BrokerConfig = {
   vhosts: {
@@ -24,7 +37,7 @@ const brokerConfig: BrokerConfig = {
 
       // A good naming convention for queues is consumer:entity:action
       queues: {
-        'webmap:capture-data:save': {
+        [`${captureDataSave}`]: {
           options: {
             arguments: {
               // Route nacked messages to a service specific dead letter queue
@@ -50,7 +63,7 @@ const brokerConfig: BrokerConfig = {
       },
 
       bindings: {
-        'service[webmap.capture-data.created] -> webmap:capture-data:save': {},
+        [`service[${captureDataToken}] -> ${captureDataSave}`]: {},
 
         // Route delayed messages to the 1 minute delay queue
         'delay[delay.1m] -> delay:1m': {},
@@ -75,14 +88,14 @@ const brokerConfig: BrokerConfig = {
           },
         },
 
-        user_event: {
+        [PublicationNames.WEBMAP_EVENTS]: {
           exchange: 'service',
         },
       },
 
       subscriptions: {
         [SubscriptionNames.CAPTURE_DATA]: {
-          queue: 'webmap:capture-data:save',
+          queue: captureDataSave,
           contentType: 'application/json',
           redeliveries: {
             limit: 5,

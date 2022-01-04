@@ -1,8 +1,12 @@
 import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
-import { getBroker, publish, subscribe } from 'messaging/broker'
-import { SubscriptionNames } from 'messaging/brokerConfig'
-import { captureFeatureCreatedHandler } from 'messaging/eventHandlers'
+import { getBroker, publish } from 'messaging/broker'
+import {
+  EventNames,
+  PublicationNames,
+  SubscriptionNames,
+} from 'messaging/brokerConfig'
+import registerEventHandlers from 'messaging/eventHandlers'
 import { truncateTables } from 'models/base'
 import { CaptureFeature } from 'models/captureFeature'
 
@@ -23,10 +27,7 @@ const data: CaptureFeature = {
 
 describe('capture created', () => {
   beforeAll(async () => {
-    await subscribe(
-      SubscriptionNames.CAPTURE_DATA,
-      captureFeatureCreatedHandler,
-    )
+    await registerEventHandlers()
   })
 
   beforeEach(async () => {
@@ -43,8 +44,11 @@ describe('capture created', () => {
 
   it('should successfully handle captureCreated event', async () => {
     // publish the capture
-    await publish('user_event', 'webmap.capture-data.created', data, (e) =>
-      console.log('result:', e),
+    await publish(
+      PublicationNames.WEBMAP_EVENTS,
+      EventNames.CAPTURE_DATA,
+      data,
+      (e) => console.log('result:', e),
     )
 
     // wait for message to be consumed
