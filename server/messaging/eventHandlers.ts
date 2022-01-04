@@ -1,5 +1,5 @@
 import { TableNames } from 'db/knex'
-import { subscribe } from 'messaging/broker'
+import { BrokerEventHandler, subscribe } from 'messaging/broker'
 import { batchUpdate } from 'models/base'
 import { addCaptureFeature, CaptureFeature } from 'models/captureFeature'
 import {
@@ -9,26 +9,27 @@ import {
 } from 'models/rawCaptureFeature'
 import { SubscriptionNames } from './brokerConfig'
 
-async function captureFeatureCreatedHandler(message: CaptureFeature) {
-  try {
+export const captureFeatureCreatedHandler: BrokerEventHandler<CaptureFeature> =
+  async (message: CaptureFeature) => {
     console.log('received capture feature event message', message)
-    await addCaptureFeature(message)
-  } catch (e) {
-    console.error(e)
+    const res = await addCaptureFeature(message)
+    const error = !res?.id ? new Error('error') : undefined
+    return {
+      error,
+      recoverable: true,
+    }
   }
-}
 
-async function rawCaptureCreatedHandler(message: CaptureFeature) {
-  try {
-    console.log('received raw capture event message', message)
-    const rawCaptureFeature = { ...message }
-    await addRawCapture(rawCaptureFeature)
-    await assignRegion(rawCaptureFeature)
-    await updateCluster(rawCaptureFeature)
-    console.log('raw capture event handler finished')
-  } catch (e) {
-    console.error(e)
-  }
+const rawCaptureCreatedHandler: BrokerEventHandler<CaptureFeature> = async (
+  message,
+) => {
+  console.log('received raw capture event message', message)
+  const rawCaptureFeature = { ...message }
+  await addRawCapture(rawCaptureFeature)
+  await assignRegion(rawCaptureFeature)
+  await updateCluster(rawCaptureFeature)
+  console.log('raw capture event handler finished')
+  return {}
 }
 
 export type TokenMessage = {
@@ -38,33 +39,22 @@ export type TokenMessage = {
   wallet_name: string
 }
 
-async function tokenAssignedHandler(message: TokenMessage) {
-  try {
-    console.log('token event handler received:', message)
-    const { wallet_name, entries } = message
-    const ids = entries.map((entry) => entry.capture_id)
-    const updateObject = {
-      wallet_name,
-    }
-    await batchUpdate(ids, updateObject, TableNames.CAPTURE_FEATURE)
-    console.log('token event handler finished.')
-  } catch (e) {
-    console.error('Get error when handling message:', e)
+const tokenAssignedHandler: BrokerEventHandler<TokenMessage> = async (
+  message: TokenMessage,
+) => {
+  console.log('token event handler received:', message)
+  const { wallet_name, entries } = message
+  const ids = entries.map((entry) => entry.capture_id)
+  const updateObject = {
+    wallet_name,
   }
+  await batchUpdate(ids, updateObject, TableNames.CAPTURE_FEATURE)
+  console.log('token event handler finished.')
+  return {}
 }
 
 export default async function registerEventHandlers() {
-  try {
-    await subscribe(
-      SubscriptionNames.CAPTURE_FEATURE,
-      captureFeatureCreatedHandler,
-    )
-    await subscribe(
-      SubscriptionNames.RAW_CAPTURE_CREATED,
-      rawCaptureCreatedHandler,
-    )
-    await subscribe(SubscriptionNames.TOKEN_ASSIGNED, tokenAssignedHandler)
-  } catch (e) {
-    console.error('Get error when handling message:', e)
-  }
+  await subscribe(SubscriptionNames.CAPTURE_DATA, captureFeatureCreatedHandler)
+  await subscribe(SubscriptionNames.FIELD_DATA, rawCaptureCreatedHandler)
+  await subscribe(SubscriptionNames.TOKEN_ASSIGNED, tokenAssignedHandler)
 }

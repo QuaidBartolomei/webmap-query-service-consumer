@@ -13,7 +13,7 @@ export function getBroker() {
 }
 
 export async function publish<T>(
-  publicationName: SubscriptionNames,
+  publicationName: string,
   routingKey: string,
   payload: T,
   resultHandler: (messageId: string) => void,
@@ -34,32 +34,29 @@ export async function publish<T>(
   }
 }
 
+export type BrokerEventHandler<T> = (
+  content: T,
+) => Promise<{ recoverable?: boolean; error?: Error }>
+
 export async function subscribe<T>(
   subscriptionName: SubscriptionNames,
-  eventHandler: (content: T) => Promise<void>,
+  eventHandler: BrokerEventHandler<T>,
 ) {
   try {
     const broker = await getBroker()
     const subscription = await broker.subscribe(subscriptionName)
     subscription
       .on('message', async (_message, content: T, ackOrNack) => {
-        try {
-          await eventHandler(content)
-          ackOrNack()
-        } catch (err) {
-          console.error(err)
-          ackOrNack(err as Error, [
-            // republish until attempts limit then dead-letter
-            {
-              strategy: 'republish',
-              defer: 1000,
-              attempts: 10,
-            },
-            {
-              strategy: 'nack',
-            },
-          ])
-        }
+        const res = await eventHandler(content)
+        const { error, recoverable } = res
+        if (!error) return ackOrNack()
+        console.log('NACKING MESSAGE')
+        ackOrNack(
+          error,
+          recoverable
+            ? brokerConfig.recovery?.deferred_retry
+            : brokerConfig.recovery?.dead_letter,
+        )
       })
       .on('error', console.error)
   } catch (err) {

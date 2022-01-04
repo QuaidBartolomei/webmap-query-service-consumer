@@ -78,7 +78,7 @@ describe('rawCaptureFeature', () => {
 
     // prepare the capture before the wallet event
     const message = capture_in_kenya
-    await publish(SubscriptionNames.RAW_CAPTURE_CREATED, '', message, () =>
+    await publish(SubscriptionNames.FIELD_DATA, '', message, () =>
       console.log('message received'),
     )
 

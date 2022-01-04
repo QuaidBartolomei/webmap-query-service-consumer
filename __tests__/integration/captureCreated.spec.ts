@@ -1,8 +1,8 @@
 import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
-import { getBroker, publish } from 'messaging/broker'
+import { getBroker, publish, subscribe } from 'messaging/broker'
 import { SubscriptionNames } from 'messaging/brokerConfig'
-import registerEventHandlers from 'messaging/eventHandlers'
+import { captureFeatureCreatedHandler } from 'messaging/eventHandlers'
 import { truncateTables } from 'models/base'
 import { CaptureFeature } from 'models/captureFeature'
 
@@ -21,9 +21,12 @@ const data: CaptureFeature = {
   location: '',
 }
 
-describe('tokenAssigned', () => {
+describe('capture created', () => {
   beforeAll(async () => {
-    await registerEventHandlers()
+    await subscribe(
+      SubscriptionNames.CAPTURE_DATA,
+      captureFeatureCreatedHandler,
+    )
   })
 
   beforeEach(async () => {
@@ -40,7 +43,7 @@ describe('tokenAssigned', () => {
 
   it('should successfully handle captureCreated event', async () => {
     // publish the capture
-    await publish(SubscriptionNames.CAPTURE_FEATURE, '', data, (e) =>
+    await publish('user_event', 'webmap.capture-data.created', data, (e) =>
       console.log('result:', e),
     )
 
@@ -58,7 +61,7 @@ describe('tokenAssigned', () => {
     // prepare the capture before the wallet event
     await knex(TableNames.CAPTURE_FEATURE).insert(data)
     // publish the capture
-    await publish(SubscriptionNames.CAPTURE_FEATURE, '', data, (e) =>
+    await publish(SubscriptionNames.CAPTURE_DATA, '', data, (e) =>
       console.log('result:', e),
     )
     // wait for message to be consumed

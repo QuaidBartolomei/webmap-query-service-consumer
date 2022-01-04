@@ -1,55 +1,129 @@
 import { BrokerConfig } from 'rascal'
 
 export enum SubscriptionNames {
-  CAPTURE_FEATURE = 'capture-created',
-  RAW_CAPTURE_CREATED = 'raw-capture-created',
+  CAPTURE_DATA = 'capture-created',
+  FIELD_DATA = 'raw-capture-created',
   TOKEN_ASSIGNED = 'token-assigned',
 }
 
 const brokerConfig: BrokerConfig = {
   vhosts: {
-    v1: {
+    'custom-vhost': {
       connection: {
         url: process.env.RABBITMQ_URL,
         socketOptions: {
           timeout: 3000,
         },
       },
-      exchanges: ['capture-data-ex', 'field-data', 'wallet-service-ex'],
-      queues: [
-        'capture-data:events',
-        'field-data-events',
-        'token-transfer:events',
+      exchanges: [
+        'service', // Shared exchange for all services within this vhost
+        'delay', // To delay failed messages before a retry
+        'retry', // To retry failed messages up to maximum number of times
+        'dead_letters', // When retrying fails, messages end up here
       ],
-      bindings: [
-        'wallet-service-ex[token.transfer] -> token-transfer:events',
-        'capture-data-ex -> capture-data:events',
-        'field-data -> field-data-events',
-      ],
+
+      // A good naming convention for queues is consumer:entity:action
+      queues: {
+        'webmap:capture-data:save': {
+          options: {
+            arguments: {
+              // Route nacked messages to a service specific dead letter queue
+              'x-dead-letter-exchange': 'dead_letters',
+              'x-dead-letter-routing-key': 'webmap.dead_letter',
+            },
+          },
+        },
+
+        // Create a delay queue to hold failed messages for a short interval before retrying
+        'delay:1m': {
+          options: {
+            arguments: {
+              // Configure messages to expire after 1 minute, then route them to the retry exchange
+              'x-message-ttl': 60000,
+              'x-dead-letter-exchange': 'retry',
+            },
+          },
+        },
+
+        // Queue for holding dead letters until they can be resolved
+        'dead_letters:webmap': {},
+      },
+
+      bindings: {
+        'service[webmap.capture-data.created] -> webmap:capture-data:save': {},
+
+        // Route delayed messages to the 1 minute delay queue
+        'delay[delay.1m] -> delay:1m': {},
+
+        // Route retried messages back to their original queue using the CC routing keys set by Rascal
+        'retry[webmap:capture-data:save] -> webmap:capture-data:save': {},
+        // Route dead letters the service specific dead letter queue
+        'dead_letters[webmap.dead_letter] -> dead_letters:webmap': {},
+      },
+
       publications: {
-        [SubscriptionNames.TOKEN_ASSIGNED]: {
-          exchange: 'wallet-service-ex',
-          routingKey: 'token.transfer',
+        // Always publish a notification of success (it's useful for testing if nothing else)
+        save_user_succeeded: {
+          exchange: 'service',
         },
-        [SubscriptionNames.RAW_CAPTURE_CREATED]: {
-          exchange: 'field-data',
+
+        // Forward messages to the 1 minute delay queue when retrying
+        retry_in_1m: {
+          exchange: 'delay',
+          options: {
+            CC: ['delay.1m'],
+          },
         },
-        [SubscriptionNames.CAPTURE_FEATURE]: {
-          exchange: 'capture-data-ex',
+
+        user_event: {
+          exchange: 'service',
         },
       },
+
       subscriptions: {
-        [SubscriptionNames.CAPTURE_FEATURE]: {
-          queue: 'capture-data:events',
+        [SubscriptionNames.CAPTURE_DATA]: {
+          queue: 'webmap:capture-data:save',
           contentType: 'application/json',
+          redeliveries: {
+            limit: 5,
+            counter: 'shared',
+          },
         },
-        [SubscriptionNames.RAW_CAPTURE_CREATED]: {
-          queue: 'field-data-events',
-          contentType: 'application/json',
-        },
-        [SubscriptionNames.TOKEN_ASSIGNED]: {
-          queue: 'token-transfer:events',
-        },
+      },
+    },
+  },
+
+  // Define recovery strategies for different error scenarios
+  recovery: {
+    // Deferred retry is a good strategy for temporary (connection timeout) or unknown errors
+    deferred_retry: [
+      {
+        strategy: 'forward',
+        attempts: 10,
+        publication: 'retry_in_1m',
+        xDeathFix: true, // See https://github.com/rabbitmq/rabbitmq-server/issues/161
+      },
+      {
+        strategy: 'nack',
+      },
+    ],
+
+    // Republishing with immediate nack returns the message to the original queue but decorates
+    // it with error headers. The next time Rascal encounters the message it immediately nacks it
+    // causing it to be routed to the services dead letter queue
+    dead_letter: [
+      {
+        strategy: 'republish',
+        immediateNack: true,
+      },
+    ],
+  },
+  // Define counter(s) for counting redeliveries
+  redeliveries: {
+    counters: {
+      shared: {
+        size: 10,
+        type: 'inMemory',
       },
     },
   },
