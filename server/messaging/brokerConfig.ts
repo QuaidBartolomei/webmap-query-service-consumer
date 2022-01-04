@@ -14,10 +14,11 @@ export enum SubscriptionNames {
 
 export enum EventNames {
   CAPTURE_DATA = `webmap.capture-data.created`,
+  TOKEN_ASSIGNED = `webmap.token.assign`,
 }
 
 const captureDataSave = `${consumer}:${SubscriptionNames.CAPTURE_DATA}:save`
-const captureDataToken = `${consumer}.${SubscriptionNames.CAPTURE_DATA}.created`
+const tokenSave = `${consumer}:${SubscriptionNames.TOKEN_ASSIGNED}:save`
 
 const brokerConfig: BrokerConfig = {
   vhosts: {
@@ -47,6 +48,16 @@ const brokerConfig: BrokerConfig = {
           },
         },
 
+        [`${tokenSave}`]: {
+          options: {
+            arguments: {
+              // Route nacked messages to a service specific dead letter queue
+              'x-dead-letter-exchange': 'dead_letters',
+              'x-dead-letter-routing-key': 'webmap.dead_letter',
+            },
+          },
+        },
+
         // Create a delay queue to hold failed messages for a short interval before retrying
         'delay:1m': {
           options: {
@@ -63,7 +74,8 @@ const brokerConfig: BrokerConfig = {
       },
 
       bindings: {
-        [`service[${captureDataToken}] -> ${captureDataSave}`]: {},
+        [`service[${EventNames.CAPTURE_DATA}] -> ${captureDataSave}`]: {},
+        [`service[${EventNames.TOKEN_ASSIGNED}] -> ${tokenSave}`]: {},
 
         // Route delayed messages to the 1 minute delay queue
         'delay[delay.1m] -> delay:1m': {},
@@ -96,6 +108,15 @@ const brokerConfig: BrokerConfig = {
       subscriptions: {
         [SubscriptionNames.CAPTURE_DATA]: {
           queue: captureDataSave,
+          contentType: 'application/json',
+          redeliveries: {
+            limit: 5,
+            counter: 'shared',
+          },
+        },
+
+        [SubscriptionNames.TOKEN_ASSIGNED]: {
+          queue: tokenSave,
           contentType: 'application/json',
           redeliveries: {
             limit: 5,

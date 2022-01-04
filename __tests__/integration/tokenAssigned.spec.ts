@@ -1,7 +1,7 @@
 import waitForExpect from 'wait-for-expect'
 import knex, { TableNames } from 'db/knex'
 import { getBroker, publish } from 'messaging/broker'
-import { SubscriptionNames } from 'messaging/brokerConfig'
+import { EventNames, PublicationNames } from 'messaging/brokerConfig'
 import registerEventHandlers from 'messaging/eventHandlers'
 import { truncateTables } from 'models/base'
 import { CaptureFeature } from 'models/captureFeature'
@@ -51,8 +51,8 @@ describe('tokenAssigned', () => {
 
     // publish the capture
     await publish(
-      SubscriptionNames.TOKEN_ASSIGNED,
-      'token.transfer',
+      PublicationNames.WEBMAP_EVENTS,
+      EventNames.TOKEN_ASSIGNED,
       message,
       (e) => console.log('result:', e),
     )
